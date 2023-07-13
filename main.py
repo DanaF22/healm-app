@@ -8,6 +8,7 @@ from kivymd.uix.list import OneLineListItem
 from kivymd.uix.list import MDList, OneLineListItem, OneLineIconListItem
 from kivymd.uix.list import IconLeftWidget
 from kivy.uix.scrollview import ScrollView
+from kivymd.uix.button import MDRoundFlatIconButton, MDFloatingActionButton, MDRectangleFlatButton
 
 Window.size = (300, 500)
 
@@ -26,9 +27,23 @@ ScreenManager:
             left_action_items: [["menu",lambda x: app.navigation_draw()]]
             right_action_items: [["bandage",lambda x: app.navigation_draw()]]
             elevation: 4
-        MDLabel:
-            text: 'addlist'
-            halign: 'center'
+        # MDLabel:
+        #     text: 'addlist'
+        #     halign: 'center'
+        
+        ScrollView:
+            MDGridLayout:
+                id: container
+                cols: 3
+                size_hint: None, None
+                width: root.width
+                height: self.minimum_height
+                pos_hint: {'center_x': .5, 'center_y': .5}
+                # MDRoundFlatIconButton:
+                #     text: "Bandage"
+                #     icon:"bandage"
+                # MDList:
+                #     id: container
         MDBottomNavigation:
             panel_color: 0,(145/255.0),(237/255.0),1
             text_color_active:get_color_from_hex("F5F5F5")
@@ -87,8 +102,6 @@ ScreenManager:
         text: 'Back'
         pos_hint:{'center_x':0.5, 'center_y':0.2}
         on_press: root.manager.current = 'phonenumbers1'
-        
-
 """
 
 # list_helper = """
@@ -114,31 +127,38 @@ sm.add_widget(MenuScreen(name ='menu'))
 sm.add_widget(PhoneNumScreen1(name ='phonenumbers1'))
 sm.add_widget(PhoneNumScreen2(name ='phonenumbers2'))
 
-
-
-
-
 class DemoApp(MDApp):
 
     def build(self):
         #self.theme_cls.primary_palette = 'LightBlue'
         # self.theme_cls.accent_palette = 'Blue'
-        screen = Builder.load_string(screen_helper)
+       screen = Builder.load_string(screen_helper)
 
-        return screen
+       return screen
+
+    # adding the bandages onto screen
+    def on_start(self):
+        # scroll = ScrollView()
+        # list_view = MDList()
+        # scroll.add_widget(list_view)
+
+        for i in range(20):
+            items = MDRoundFlatIconButton(text='Bandage ' + str(i+1), icon= 'bandage')
+            self.root.get_screen('menu').ids.container.add_widget(items)
+
     def get_data(self):
         self.root.get_screen('phonenumbers1').add_widget(self.root.get_screen('phonenumbers2').ids.data.text)
         print(self.root.get_screen('phonenumbers2').ids.data.text) # address of textfield in kivy
 
-#     def navigation_draw(self):
-#         print("Navigation")
-#     def on_start(self):
-#         for i in range(20):
-#             # icon = IconLeftWidget(icon="bandage")
-#             items = OneLineListItem(text="Bandage " +str(i+1))
-#             #command used to reference id in side list_helper(or any kind of multi-line string)
-#             # items.add_widget(icon)
-#             self.root.ids.container.add_widget(items)
+    # def navigation_draw(self):
+    #     print("Navigation")
+    # def on_start(self):
+    #     for i in range(20):
+    #         icon = IconLeftWidget(icon="bandage")
+    #         items = OneLineListItem(text="Bandage " +str(i+1))
+    #         #command used to reference id in side list_helper(or any kind of multi-line string)
+    #         items.add_widget(icon)
+    #         self.root.ids.container.add_widget(items)
 
     # def build(self):
     #     screen = Screen()
