@@ -115,6 +115,11 @@ ScreenManager:
             # line_color_focus:1,0,1,1
             # color_active:[1,1,1,1]
             password: True
+            Image:
+                source: "assests/google.png"
+                center_x: self.parent.center_x
+                center_y: self.parent.center_y
+                size: root.width, root.height
         MDRoundFlatButton:
             text: "LOGIN"
             text_color: "white"
@@ -194,8 +199,8 @@ ScreenManager:
             line_color: "white"
             pos_hint: {"center_x":.5}
             font_size: 15
-            # on_press: app.auth_email(email.text, password.text)
-            on_press: app.email_database(email.text, password.text)
+            on_press: app.auth_email(email.text, password.text)
+            # on_press: app.email_database(email.text, password.text)
             on_press: root.manager.current = 'menu'
         MDRoundFlatButton:
             text: "BACK"
@@ -236,16 +241,18 @@ ScreenManager:
             panel_color: 0,(145/255.0),(237/255.0),1
             text_color_active:get_color_from_hex("F5F5F5")
 
+            
+
+            MDBottomNavigationItem:
+                name: 'screen 2'
+                icon: 'cog'
+                on_tab_release: root.manager.current = 'bandageinfo'
+                
             MDBottomNavigationItem:
                 name: 'screen 1'
                 icon: 'cloud'
                 on_tab_press: root.manager.get_screen('cloudscreen').bluetooth_discovery()
                 on_tab_release: root.manager.current = 'cloudscreen'
-
-            MDBottomNavigationItem:
-                name: 'screen 2'
-                icon: 'medication'
-                on_tab_release: root.manager.current = 'bandageinfo'
 
             MDBottomNavigationItem:
                 name: 'screen 3'
@@ -259,21 +266,22 @@ ScreenManager:
     id: bandages
     
     MDLabel:
+        id: trythis
         text: '* Bandage Info *'
         halign: 'center'
         size_hint_y: 1.8
-    MDLabel:
-        text: 'Current pH level: 2.3'
-        halign: 'center'
-        size_hint_y: 1.65
-        font_size: 45
-        theme_text_color: 'Custom'
-        text_color: 0,0,1,1
-    MDLabel:
-        text: 'Bandage Location: Shoulder'
-        halign:'center'
-        font_size: 25
-        size_hint_y: 1.48
+    # MDLabel:
+    #     text: 'Current pH level: 2.3'
+    #     halign: 'center'
+    #     size_hint_y: 1.65
+    #     font_size: 45
+    #     theme_text_color: 'Custom'
+    #     text_color: 0,0,1,1
+    # MDLabel:
+    #     text: 'Bandage Location: Shoulder'
+    #     halign:'center'
+    #     font_size: 25
+    #     size_hint_y: 1.48
     MDLabel:
         text: 'History of Wound (Past 7 Days)'
         halign: 'center'
@@ -284,13 +292,13 @@ ScreenManager:
         id: graph_container
         # size_hint_y: .3
         # height: "20"
-    MDLabel:
-        text: 'Your wound is healing!'
-        halign: 'center'
-        font_size:30
-        size_hint_y: .6
-        theme_text_color: 'Custom'
-        text_color: 0,1,0,1
+    # MDLabel:
+    #     text: 'Your wound is healing!'
+    #     halign: 'center'
+    #     font_size:30
+    #     size_hint_y: .6
+    #     theme_text_color: 'Custom'
+    #     text_color: 0,1,0,1
     MDCard:
         orientation: 'vertical'
         padding: "8dp"
@@ -318,6 +326,13 @@ ScreenManager:
         icon:'home-account'
         pos_hint: {"center_x": 0.5, "center_y": 0.95}
         on_press: root.manager.current = 'menu'
+    MDRectangleFlatButton:
+        text: "Log-out"
+        text_color: "blue"
+        line_color: "blue"
+        pos_hint: {"center_x": 0.5, "center_y": 0.8}
+        on_press: app.pressed_login()
+        on_press: root.manager.current = 'login'
 
 
 <CloudScreen>:
@@ -432,12 +447,12 @@ class CloudScreen(Screen):
             devices = await bleak.discover()
             return devices
 
-        print("Performing inquiry...")
+        # print("Performing inquiry...")
 
         loop = asyncio.get_event_loop()
         nearby_devices = loop.run_until_complete(discover_devices())
 
-        print("Found {} devices".format(len(nearby_devices)))
+        # print("Found {} devices".format(len(nearby_devices)))
 
         grid_layout = self.ids.container3
         grid_layout.clear_widgets()
@@ -480,6 +495,8 @@ class MainBandageScreen(Screen):
         graph_container.size_hint_y = None  # Disable height size_hint
         graph_container.height = "150dp"  # Set a fixed height (you can adjust the value as needed)
         graph_container.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the container
+
+
 
 
 sm = ScreenManager()
@@ -562,6 +579,11 @@ class DemoApp(MDApp):
     def login(self):
         login_google()
 
+    def pressed_login(self):
+
+        self.root.get_screen('login').ids.email1.text = ''
+        self.root.get_screen('login').ids.password1.text = ''
+
     # adding the bandages onto screen
 
     # what happens when press one of the bandage icons
@@ -586,14 +608,39 @@ class DemoApp(MDApp):
         bandages.commit()
         rows = c.fetchall()
 
+        wound = ['Your wound is healing!', 'Go see a doctor', 'Your wound is healing', 'Go see a doctor',
+                 'Your wound is healing!']
+        location = ['Shoulder', 'Knee', 'Hand', 'Elbow', 'Foot']
+        pHlevel = ['2.3000', '7.222', '2.3000', '7.222', '2.3000']
+
+
+
         for row in rows:
             print(row)
 
         for i in range(len(rows)):
         # for i in range(30):
+            #creating the bandages
             self.items = MDRoundFlatIconButton(text=str(i + 1), icon='bandage', size_hint=(1, 4))
             self.items.bind(on_press=self.pressed)
             self.root.get_screen('menu').ids.container1.add_widget(self.items)
+            #adding the labels inside the bandages
+            self.info_pH = MDLabel(text = 'Current pH level:'+pHlevel[i], halign = 'center', size_hint_y = 1.65,
+                                font_size = 45, theme_text_color = 'Custom', text_color = (0,0,1,1))
+            self.info_location =  MDLabel(text = 'Bandage Location:'+location[i], halign = 'center', font_size = 25, size_hint_y = 1.48)
+            self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info_pH)
+            self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info_location)
+
+            self.root.get_screen('mainbandage').generate_bar_graph()
+            if wound[i]== 'Your wound is healing!':
+                self.info = MDLabel(text = wound[i], halign = 'center', font_size= 30, size_hint_y =.6,
+                                    theme_text_color= 'Custom', text_color = (0,1,0,1))
+            else:
+                self.info = MDLabel(text=wound[i], halign='center', font_size=30, size_hint_y=.6,
+                                theme_text_color='Custom', text_color=(1, 0, 0, 1))
+            self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info)
+
+
         # on_press = self.root.get_screen('menu').manager.current = 'mainbandage'
 
     # saving phonenumbers once entered by user
@@ -683,23 +730,24 @@ class DemoApp(MDApp):
         except Exception as e:
             print("Error:", e)
 
-    # def auth_email(self, email, password):
-    #     config = {'apiKey': "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
-    #       'authDomain': "healm-2-login.firebaseapp.com",
-    #       'projectId': "healm-2-login",
-    #       'storageBucket': "healm-2-login.appspot.com",
-    #       'messagingSenderId': "276399253320",
-    #       'appId': "1:276399253320:web:76b70d687e772cf73ab57d",
-    #       'measurementId': "G-D06175F6BW"}
-    #
-    #     # cred = credentials.Certificate('path/to/healm-2-login-firebase-adminsdk-y8yju-81ad5355d3.json')
-    #     app = firebase.initialize_app(config)
-    #     auth = app.auth()
-    #
-    #     Email = email
-    #     Password = password
-    #
-    #     user = auth.create_user_with_email_and_password(email, password)
+    def auth_email(self, email, password):
+        config = {'apiKey': "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
+          'authDomain': "healm-2-login.firebaseapp.com",
+          'projectId': "healm-2-login",
+          'storageBucket': "healm-2-login.appspot.com",
+          'messagingSenderId': "276399253320",
+          'appId': "1:276399253320:web:76b70d687e772cf73ab57d",
+          'measurementId': "G-D06175F6BW"}
+
+        # cred = credentials.Certificate('path/to/healm-2-login-firebase-adminsdk-y8yju-81ad5355d3.json')
+        app = firebase.initialize_app(config)
+        auth = app.auth()
+
+        Email = email
+        Password = password
+
+        auth.create_user_with_email_and_password(email, password)
+        user = auth.sign_in_with_email_and_password(email, password)
 
 
     def email_database(self, email, password):
