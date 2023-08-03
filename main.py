@@ -1,10 +1,11 @@
 # import kivymd
 # import jnius as jnius
 import platform
+import requests
 # import firebase
 from kivyauth.google_auth import initialize_google, login_google, logout_google
 import firebase_admin
-from firebase_admin import credentials
+from firebase_admin import credentials, initialize_app, auth, 
 from firebase import firebase
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -18,7 +19,6 @@ from kivymd.uix.label import MDLabel
 from kivy.uix.scrollview import ScrollView
 from kivy.app import App
 from kivy.clock import Clock
-
 
 #: import get_color_from_hex kivy.utils.get_color_from_hex
 from kivymd.uix.button import MDRoundFlatIconButton, MDFloatingActionButton, MDRectangleFlatButton, MDFlatButton
@@ -34,13 +34,11 @@ import bleak
 
 import sqlite3
 
-
 # from jnius import autoclass
 # from jnius import cast
 
+
 Window.size = (300, 500)
-
-
 
 """BluetoothAdapter = autoclass('android.bluetooth.BluetoothAdapter')
 BluetoothDevice = autoclass('android.bluetooth.BluetoothDevice')
@@ -75,13 +73,14 @@ ScreenManager:
 
 <LoginScreen>:
     name: 'login'
-    md_bg_color : [1,0,1,1]
+    md_bg_color : [1,0,0,1]
     MDCard:
         size_hint : 1, 1
         size: "200dp", "300dp"
         pos_hint : {"center_x":.5, "center_y":.5}
         elevation: 3
-        md_bg_color: [99/255, 188/355, 243/355, 1]
+        # md_bg_color: [0, 0, 0, 1]
+        # md_bg_color: [99/255, 188/355, 243/355, 1]
         # md_bg_color: [1/255, 6/255, 61/255, 1]
         padding: 20
         spacing: 30
@@ -122,26 +121,27 @@ ScreenManager:
                 size: root.width, root.height
         MDRoundFlatButton:
             text: "LOGIN"
-            text_color: "white"
-            line_color: "white"
+            text_color: "blue"
+            line_color: "black"
             pos_hint: {"center_x":.5}
             font_size: 15
             on_press: app.login_callback(email1.text, password1.text)
         MDFloatingActionButton:
             icon: "google"
             pos_hint: {"center_x": .5}
-            on_release: app.login()
+            on_release: app.google_signin()
+            # on_release: app.login()
         MDRoundFlatButton:
             text: "SIGN-UP"
-            text_color: "white"
-            line_color: "white"
+            text_color: "blue"
+            line_color: "black"
             pos_hint: {"center_x":.5}
             font_size: 15
             on_press: root.manager.current = 'signin'
         Widget:
             size_hint_y : None
             height : 30
-            
+
 <SigninScreen>:
     name: "signin"
     md_bg_color : [1,0,1,1]
@@ -150,7 +150,7 @@ ScreenManager:
         size: "200dp", "800dp"
         pos_hint : {"center_x":.5, "center_y":.5}
         elevation: 3
-        md_bg_color: [99/255, 188/355, 243/355, 1]
+        # md_bg_color: [99/255, 188/355, 243/355, 1]
         # md_bg_color: [1/255, 6/255, 61/255, 1]
         padding: 20
         spacing: 30
@@ -195,8 +195,8 @@ ScreenManager:
             password: True
         MDRoundFlatButton:
             text: "SIGN-UP"
-            text_color: "white"
-            line_color: "white"
+            text_color: "blue"
+            line_color: "black"
             pos_hint: {"center_x":.5}
             font_size: 15
             on_press: app.auth_email(email.text, password.text)
@@ -204,12 +204,12 @@ ScreenManager:
             on_press: root.manager.current = 'menu'
         MDRoundFlatButton:
             text: "BACK"
-            text_color: "white"
-            line_color: "white"
+            text_color: "blue"
+            line_color: "black"
             pos_hint: {"center_x":.5}
             font_size: 15
             on_press: root.manager.current = 'login'
-    
+
 
 <MenuScreen>:
     name: 'menu'
@@ -241,13 +241,13 @@ ScreenManager:
             panel_color: 0,(145/255.0),(237/255.0),1
             text_color_active:get_color_from_hex("F5F5F5")
 
-            
+
 
             MDBottomNavigationItem:
                 name: 'screen 2'
                 icon: 'cog'
                 on_tab_release: root.manager.current = 'bandageinfo'
-                
+
             MDBottomNavigationItem:
                 name: 'screen 1'
                 icon: 'cloud'
@@ -264,7 +264,7 @@ ScreenManager:
 <MainBandageScreen>:
     name: 'mainbandage'
     id: bandages
-    
+
     MDLabel:
         id: trythis
         text: '* Bandage Info *'
@@ -306,14 +306,14 @@ ScreenManager:
         size: "200dp", "100dp"
         pos_hint: {"center_x":0.5, "center_y": 0.15}
         elevation: 3
-    
+
         MDLabel:
             font_size: 28
             outline_color: 0,0,0
             outline_width: 1
             text: 'insert bandage specifics here'
             size_hint_y: .4
-    
+
     MDIconButton:
         icon:'arrow-left'
         pos_hint: {"center_x": 0.090, "center_y": 0.95}
@@ -338,7 +338,7 @@ ScreenManager:
 <CloudScreen>:
     name: 'cloudscreen'
     id: container3
-    
+
     MDIconButton:
         icon:'arrow-right'
         pos_hint: {"center_x": 0.92, "center_y": 0.95}
@@ -356,7 +356,7 @@ ScreenManager:
             size_hint_y: None  # Disable height size_hint
             height: self.minimum_height  # Set a fixed height to allow scrolling
 
-        
+
 <PhoneNumScreen1>:
     name: 'phonenumbers1'
     id: container
@@ -435,10 +435,14 @@ ScreenManager:
 class LoginScreen(Screen):
     pass
 
+
 class SigninScreen(Screen):
     pass
+
+
 class MenuScreen(Screen):
     pass
+
 
 class CloudScreen(Screen):
 
@@ -470,11 +474,14 @@ class CloudScreen(Screen):
 class BandageInfo(Screen):
     pass
 
+
 class PhoneNumScreen1(Screen):
     pass
 
+
 class PhoneNumScreen2(Screen):
     pass
+
 
 class MainBandageScreen(Screen):
     def generate_bar_graph(self):
@@ -497,11 +504,9 @@ class MainBandageScreen(Screen):
         graph_container.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the container
 
 
-
-
 sm = ScreenManager()
 sm.add_widget(LoginScreen(name='login'))
-sm.add_widget(SigninScreen(name = 'signin'))
+sm.add_widget(SigninScreen(name='signin'))
 sm.add_widget(MenuScreen(name='menu'))
 sm.add_widget(PhoneNumScreen1(name='phonenumbers1'))
 sm.add_widget(PhoneNumScreen2(name='phonenumbers2'))
@@ -514,6 +519,7 @@ def delete_id(btn_id, numbers, box, btn):
     phonenums.commit()
     numbers.remove_widget(box)
 
+
 # def call_num(num, self):
 #     intent = autoclass('android.net.Uri')
 #     uri = autoclass('android.net.Uri')
@@ -524,9 +530,7 @@ def delete_id(btn_id, numbers, box, btn):
 #     currentactivity.startActivity(intent)
 
 
-
 class DemoApp(MDApp):
-
     """phoneNums = sqlite3.connect('phoneNums')
     c = phoneNums.cursor()
     c.execute('DROP TABLE phoneNums')
@@ -537,19 +541,19 @@ class DemoApp(MDApp):
     phoneNums.commit()
 
     bandages = sqlite3.connect('bandages')
-    
+
     c = bandages.cursor()
-    
+
     c.execute('''
                     CREATE TABLE IF NOT EXISTS bandages
-                    ([bandage_id] INTEGER PRIMARY KEY, 
+                    ([bandage_id] INTEGER PRIMARY KEY,
                 [name] TEXT, [uric_acid] DOUBLE, [pH] DOUBLE)
                 ''')
-    
+
     c.execute('''
-                INSERT OR REPLACE INTO bandages(bandage_id, name, 
+                INSERT OR REPLACE INTO bandages(bandage_id, name,
                 uric_acid, pH)
-                            
+
                             VALUES
                             (1,'Arm', 0, 7),
                             (2,'Leg', 0.5 , 8),
@@ -559,14 +563,14 @@ class DemoApp(MDApp):
                 ''')
     bandages.commit()"""
 
-
-
     def build(self):
         # self.theme_cls.primary_palette = 'LightBlue'
         # self.theme_cls.accent_palette = 'Blue'
+        # trying to add the google log in stuff
         client_id = open("client_id.txt")
         client_secret = open("client_secret.txt")
         initialize_google(self.after_login, self.error_listener, client_id.read(), client_secret.read())
+
         screen = Builder.load_string(screen_helper)
         return screen
 
@@ -579,6 +583,7 @@ class DemoApp(MDApp):
     def login(self):
         login_google()
 
+    # clearing login stuff once login so when you log out its not there
     def pressed_login(self):
 
         self.root.get_screen('login').ids.email1.text = ''
@@ -590,7 +595,6 @@ class DemoApp(MDApp):
     def pressed(self, *args):
         self.root.get_screen('menu').manager.current = 'mainbandage'
         self.root.get_screen('mainbandage').generate_bar_graph()
-
 
     # creating the bandage icons
     def on_start(self):
@@ -613,33 +617,31 @@ class DemoApp(MDApp):
         location = ['Shoulder', 'Knee', 'Hand', 'Elbow', 'Foot']
         pHlevel = ['2.3000', '7.222', '2.3000', '7.222', '2.3000']
 
-
-
         for row in rows:
             print(row)
 
         for i in range(len(rows)):
-        # for i in range(30):
-            #creating the bandages
+            # for i in range(30):
+            # creating the bandages
             self.items = MDRoundFlatIconButton(text=str(i + 1), icon='bandage', size_hint=(1, 4))
             self.items.bind(on_press=self.pressed)
             self.root.get_screen('menu').ids.container1.add_widget(self.items)
-            #adding the labels inside the bandages
-            self.info_pH = MDLabel(text = 'Current pH level:'+pHlevel[i], halign = 'center', size_hint_y = 1.65,
-                                font_size = 45, theme_text_color = 'Custom', text_color = (0,0,1,1))
-            self.info_location =  MDLabel(text = 'Bandage Location:'+location[i], halign = 'center', font_size = 25, size_hint_y = 1.48)
+            # adding the labels inside the bandages
+            self.info_pH = MDLabel(text='Current pH level:' + pHlevel[i], halign='center', size_hint_y=1.65,
+                                   font_size=45, theme_text_color='Custom', text_color=(0, 0, 1, 1))
+            self.info_location = MDLabel(text='Bandage Location:' + location[i], halign='center', font_size=25,
+                                         size_hint_y=1.48)
             self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info_pH)
             self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info_location)
 
             self.root.get_screen('mainbandage').generate_bar_graph()
-            if wound[i]== 'Your wound is healing!':
-                self.info = MDLabel(text = wound[i], halign = 'center', font_size= 30, size_hint_y =.6,
-                                    theme_text_color= 'Custom', text_color = (0,1,0,1))
+            if wound[i] == 'Your wound is healing!':
+                self.info = MDLabel(text=wound[i], halign='center', font_size=30, size_hint_y=.6,
+                                    theme_text_color='Custom', text_color=(0, 1, 0, 1))
             else:
                 self.info = MDLabel(text=wound[i], halign='center', font_size=30, size_hint_y=.6,
-                                theme_text_color='Custom', text_color=(1, 0, 0, 1))
+                                    theme_text_color='Custom', text_color=(1, 0, 0, 1))
             self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info)
-
 
         # on_press = self.root.get_screen('menu').manager.current = 'mainbandage'
 
@@ -654,10 +656,10 @@ class DemoApp(MDApp):
         #                  ''')
         c.execute(''' INSERT INTO phoneNums (name, number)
                     VALUES (?,?)''',
-                  (self.root.get_screen('phonenumbers2').ids.name.text, self.root.get_screen('phonenumbers2').ids.number.text))
+                  (self.root.get_screen('phonenumbers2').ids.name.text,
+                   self.root.get_screen('phonenumbers2').ids.number.text))
         phonenums.commit()
         self.go_to_phonenums()
-
 
         if ((self.root.get_screen('phonenumbers2').ids.name.text == '') & (
                 self.root.get_screen('phonenumbers2').ids.number.text == '')):
@@ -679,17 +681,16 @@ class DemoApp(MDApp):
 
         numbers = self.root.get_screen('phonenumbers1').ids.numbers
 
-        #remove old phone numbers
+        # remove old phone numbers
         numbers.clear_widgets()
 
-
-
-        defaultnumbers = ["Police/Fire department \n 911", "Poison Control \n 1-800-222-1222", "Animal Poison Control \n 888-426-4435"]
+        defaultnumbers = ["Police/Fire department \n 911", "Poison Control \n 1-800-222-1222",
+                          "Animal Poison Control \n 888-426-4435"]
 
         for i in range(3):
-            box = BoxLayout(size_hint = (1, None), size = (0, 70), orientation = 'horizontal')
+            box = BoxLayout(size_hint=(1, None), size=(0, 70), orientation='horizontal')
             box.add_widget(MDRectangleFlatButton(
-                text= defaultnumbers[i], size_hint=(0.7, 1)))
+                text=defaultnumbers[i], size_hint=(0.7, 1)))
             box.add_widget(MDRectangleFlatButton(text='-', text_color='gray', line_color='gray', size_hint=(None, 1),
                                                  size=(50, 70)))
             numbers.add_widget(box)
@@ -702,8 +703,8 @@ class DemoApp(MDApp):
         for i in range(len(rows)):
             box = BoxLayout(size_hint=(1, None), size=(0, 70), orientation='horizontal')
             button = MDRectangleFlatButton(
-                text=str(rows[i][1]) + '\n' + str(rows[i][2]), size_hint=(0.7, 1), size = (0, 70), id=str(i + 1))
-            button.bind(on_press = lambda instance: self.make_phone_call(rows, i))
+                text=str(rows[i][1]) + '\n' + str(rows[i][2]), size_hint=(0.7, 1), size=(0, 70), id=str(i + 1))
+            button.bind(on_press=lambda instance: self.make_phone_call(rows, i))
             box.add_widget(button)
             remove_button = MDRectangleFlatButton(
                 text='-', text_color='red', line_color='red', size_hint=(None, 1), size=(50, 70),
@@ -711,74 +712,115 @@ class DemoApp(MDApp):
             box.add_widget(remove_button)
             numbers.add_widget(box)
 
-
         self.root.get_screen('phonenumbers1').manager.current = 'phonenumbers1'
-
 
     def make_phone_call(self, rows, index):
         # formatted_phone_number = ''.join(filter(str.isdigit, phone_number))
         phone_number = rows[index][2]
 
-
         if platform == 'android':
             call.makecall(phone_number)
         else:
-            call_url =  f"tel:{phone_number}"
+            call_url = f"tel:{phone_number}"
 
         try:
             webbrowser.open(call_url)
         except Exception as e:
             print("Error:", e)
 
-    def auth_email(self, email, password):
+    def auth_email(self, email5, password5):
         config = {'apiKey': "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
-          'authDomain': "healm-2-login.firebaseapp.com",
-          'projectId': "healm-2-login",
-          'storageBucket': "healm-2-login.appspot.com",
-          'messagingSenderId': "276399253320",
-          'appId': "1:276399253320:web:76b70d687e772cf73ab57d",
-          'measurementId': "G-D06175F6BW"}
-
-        # cred = credentials.Certificate('path/to/healm-2-login-firebase-adminsdk-y8yju-81ad5355d3.json')
-        app = firebase.initialize_app(config)
-        auth = app.auth()
-
-        Email = email
-        Password = password
-
-        auth.create_user_with_email_and_password(email, password)
-        user = auth.sign_in_with_email_and_password(email, password)
+                  'authDomain': "healm-2-login.firebaseapp.com",
+                  'projectId': "healm-2-login",
+                  'storageBucket': "healm-2-login.appspot.com",
+                  'messagingSenderId': "276399253320",
+                  'appId': "1:276399253320:web:76b70d687e772cf73ab57d",
+                  'measurementId': "G-D06175F6BW"}
 
 
-    def email_database(self, email, password):
-        # Initialize Firebase
-        self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
+        auth_obj = auth
+        cred = credentials.Certificate(r"C:\Users\Dana\Desktop\androidapp\healm-2-login-firebase-adminsdk-y8yju-243fa8f58d.json")
+        firebase_admin.initialize_app(cred)
+        # app = initialize_app(cred)
+        # app = firebase.initialize_app(config)
+        # auth = app.auth()
 
-        # Importing Data
-        data ={
-            'Email': email,
-            'Password': password
-        }
+        # google_provider = firebase.auth.GoogleAuthProvider()
+        # user1 = auth.sign_in_with_popup(google_provider)
 
-        #Post Data
-        #Database Name/Table Name
-        self.firebase.post('healm-login-default-rtdb/Users', data)
+        Email = email5
+        Password = password5
+
+        user = auth.create_user(
+            email = Email,
+            password = Password
+        )
+
+    def google_signin(self):
+        auth_obj = auth
+
+        cred = credentials.Certificate(r"C:\Users\Dana\Desktop\androidapp\healm-2-login-firebase-adminsdk-y8yju-243fa8f58d.json")
+        firebase_admin.initialize_app(cred)
+        google_provider = auth.GoogleAuthProvider()
+        user1 = auth.sign_in_with_popup(google_provider)
+
+        # auth.create_user_with_email_and_password(email, password)
+        # user = auth.sign_in_with_email_and_password(email, password)
+
+    # def email_database(self, email, password):
+    #     # Initialize Firebase
+    #     self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
+    #
+    #     # Importing Data
+    #     data = {
+    #         'Email': email,
+    #         'Password': password
+    #     }
+    #
+    #     # Post Data
+    #     # Database Name/Table Name
+    #     self.firebase.post('healm-login-default-rtdb/Users', data)
 
     def verify_login(self, email, password):
-        self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
+        # self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
 
-        #Get data
-        self.result = self.firebase.get('healm-login-default-rtdb/Users', '')
+        # Get data
+        # self.result = self.firebase.get('healm-login-default-rtdb/Users', '')
+        api_key = "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4"
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
+        data = {
+            "email": email,
+            "password": password,
+            "returnSecureToken": True
+        }
 
-        #Get Specific column like email or password
-        #Verify email and password
-        for i in self.result.keys():
-            if self.result[i]['Email'] == email:
-                if self.result[i]['Password'] == password:
-                    return True
-                    print(email+ "logged in!")
-            else:
-                return False
+        try:
+            response = requests.post(url, json=data)
+            response.raise_for_status()
+            login_data = response.json()
+            print("Successfully logged in with UID:", login_data['localId'])
+            return True
+            # login = auth.sign_in_with_email_and_password(email, password)
+            # login = 'correct'
+            # return True
+        except requests.exceptions.RequestException as e:
+            print("Login failed with error:", str(e))
+            return False
+
+        # if login == 'correct':
+        #     return True
+        # else:
+        #     return False
+
+        # Get Specific column like email or password
+        # Verify email and password
+        # for i in self.result.keys():
+        #     if self.result[i]['Email'] == email:
+        #         if self.result[i]['Password'] == password:
+        #             return True
+        #             print(email + "logged in!")
+        #     else:
+        #         return False
 
     def login_callback(self, email, password):
         if self.verify_login(email, password):
@@ -786,5 +828,7 @@ class DemoApp(MDApp):
         else:
             # Handle incorrect login here
             print("Invalid credentials")
+
+
 DemoApp().run()
 
