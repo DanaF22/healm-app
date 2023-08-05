@@ -1,11 +1,14 @@
 # import kivymd
 # import jnius as jnius
 import platform
+
+import auth as auth
 import requests
+import pyrebase
 # import firebase
 from kivyauth.google_auth import initialize_google, login_google, logout_google
 import firebase_admin
-from firebase_admin import credentials, initialize_app, auth, 
+from firebase_admin import credentials, initialize_app, auth
 from firebase import firebase
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -129,8 +132,8 @@ ScreenManager:
         MDFloatingActionButton:
             icon: "google"
             pos_hint: {"center_x": .5}
-            on_release: app.google_signin()
-            # on_release: app.login()
+            # on_release: app.google_signin("276399253320-eho7bjps4fcq38ni566g2ccihdg5e19h.apps.googleusercontent.com")
+            on_release: app.login()
         MDRoundFlatButton:
             text: "SIGN-UP"
             text_color: "blue"
@@ -217,7 +220,7 @@ ScreenManager:
         orientation: 'vertical'
         MDTopAppBar:
             title: "Heal'm"
-            left_action_items: [["menu",lambda x: app.navigation_draw()]]
+            # left_action_items: [["menu",lambda x: app.navigation_draw()]]
             right_action_items: [["bandage",lambda x: app.navigation_draw()]]
             elevation: 4
         # MDLabel:
@@ -270,18 +273,20 @@ ScreenManager:
         text: '* Bandage Info *'
         halign: 'center'
         size_hint_y: 1.8
-    # MDLabel:
-    #     text: 'Current pH level: 2.3'
-    #     halign: 'center'
-    #     size_hint_y: 1.65
-    #     font_size: 45
-    #     theme_text_color: 'Custom'
-    #     text_color: 0,0,1,1
-    # MDLabel:
-    #     text: 'Bandage Location: Shoulder'
-    #     halign:'center'
-    #     font_size: 25
-    #     size_hint_y: 1.48
+    MDLabel:
+        id: pH
+        text: 'Current pH level: 2.3'
+        halign: 'center'
+        size_hint_y: 1.65
+        font_size: 45
+        theme_text_color: 'Custom'
+        text_color: 0,0,1,1
+    MDLabel:
+        id: location
+        text: 'Bandage Location: Shoulder'
+        halign:'center'
+        font_size: 25
+        size_hint_y: 1.48
     MDLabel:
         text: 'History of Wound (Past 7 Days)'
         halign: 'center'
@@ -292,27 +297,40 @@ ScreenManager:
         id: graph_container
         # size_hint_y: .3
         # height: "20"
-    # MDLabel:
-    #     text: 'Your wound is healing!'
-    #     halign: 'center'
-    #     font_size:30
-    #     size_hint_y: .6
-    #     theme_text_color: 'Custom'
-    #     text_color: 0,1,0,1
-    MDCard:
-        orientation: 'vertical'
-        padding: "8dp"
-        size_hint: None, None
-        size: "200dp", "100dp"
-        pos_hint: {"center_x":0.5, "center_y": 0.15}
-        elevation: 3
+    MDLabel:
+        id: woundstatus
+        text: 'Your wound is healing!'
+        halign: 'center'
+        font_size:30
+        size_hint_y: .6
+        theme_text_color: 'Custom'
+        text_color: 0,1,0,1
+    MDLabel:
+        id: woundinfo
+        text: '*Below 7- wound is doing okay \\n *7- borderline healing/getting worse \\n *Above 7- wound is not well'
+        halign: 'center'
+        font_size: 22
+        size_hint_y: .45
+        theme_text_color:
+    # MDCard:
+    #     orientation: 'vertical'
+    #     padding: "8dp"
+    #     size_hint: None, None
+    #     size: "200dp", "100dp"
+    #     pos_hint: {"center_x":0.5, "center_y": 0.15}
+    #     elevation: 0
 
-        MDLabel:
-            font_size: 28
-            outline_color: 0,0,0
-            outline_width: 1
-            text: 'insert bandage specifics here'
-            size_hint_y: .4
+    MDFlatButton:
+        pos_hint: {"center_x":0.5, "center_y": 0.15}
+        font_size: 23
+        theme_text_color:"Custom"
+        text_color: "blue"
+        text: 'Click here for more information.'
+        size_hint_y: 0.25
+        on_release:
+            import webbrowser
+            
+            webbrowser.open('https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=10182338')
 
     MDIconButton:
         icon:'arrow-left'
@@ -331,6 +349,29 @@ ScreenManager:
         text_color: "blue"
         line_color: "blue"
         pos_hint: {"center_x": 0.5, "center_y": 0.8}
+        size_hint: (0.5, None)
+        size: (200, 100)
+        on_press: app.pressed_login()
+        on_press: root.manager.current = 'login'
+    MDRectangleFlatButton:
+        text: "Reset Password"
+        text_color: "blue"
+        line_color: "blue"
+        pos_hint: {"center_x": 0.5, "center_y": 0.7}
+        size_hint: (0.5, None)
+        size: (200, 100)
+        on_press: app.pressed_login()
+        on_press: root.manager.current = 'login'
+    MDRectangleFlatButton:
+        text: "Delete Account"
+        text_color: "blue"
+        line_color: "blue"
+        pos_hint: {"center_x": 0.5, "center_y": 0.6}
+        size_hint: (0.5, None)
+        size: (200, 100)
+        # self.root.get_screen('login').ids.email1.text = ''
+        # self.root.get_screen('login').ids.password1.text = ''
+        on_press: app.delete_account()
         on_press: app.pressed_login()
         on_press: root.manager.current = 'login'
 
@@ -472,7 +513,16 @@ class CloudScreen(Screen):
 
 
 class BandageInfo(Screen):
-    pass
+
+    # self.root.get_screen('login').ids.email1.text = ''
+    # self.root.get_screen('login').ids.password1.text = ''
+    def get_email(self):
+        email = self.root.get_screen('login').ids.email1.text
+        return email
+    def get_pass(self):
+        password = self.root.get_screen('login').ids.password1.text
+        return password
+
 
 
 class PhoneNumScreen1(Screen):
@@ -519,7 +569,25 @@ def delete_id(btn_id, numbers, box, btn):
     phonenums.commit()
     numbers.remove_widget(box)
 
+def load_bandage_info(i, screen, btn):
+    print(i)
+    bandages = sqlite3.connect('bandages')
+    c = bandages.cursor()
+    c.execute("SELECT * FROM bandages")
 
+    rows = c.fetchall()
+    for row in rows:
+        print(row)
+
+    screen.ids.pH.text = "Current pH Level: " + str(rows[i][3])
+    screen.ids.location.text = "Bandage Location: " + str(rows[i][1])
+    if (rows[i][3] < 7):
+        screen.ids.woundstatus.text = "Your wound is healing!"
+        screen.ids.woundstatus.text_color= (0,1,0,1)
+    elif (rows[i][3]>= 7):
+        screen.ids.woundstatus.text = "Go see a doctor"
+        screen.ids.woundstatus.text_color= (255/255,216/255,0,1)
+    screen.manager.current = 'mainbandage'
 # def call_num(num, self):
 #     intent = autoclass('android.net.Uri')
 #     uri = autoclass('android.net.Uri')
@@ -562,6 +630,14 @@ class DemoApp(MDApp):
                             (5,'Shoulder', 0.2, 7.1)
                 ''')
     bandages.commit()"""
+    pyrebaseconfig = {
+        "apiKey": "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
+        "authDomain": "healm-2-login.firebaseapp.com",
+        "databaseURL": "https://databaseName.firebaseio.com",
+        "storageBucket": "healm-2-login.appspot.com"
+    }
+    userEmail = ''
+    userId = ''
 
     def build(self):
         # self.theme_cls.primary_palette = 'LightBlue'
@@ -574,14 +650,29 @@ class DemoApp(MDApp):
         screen = Builder.load_string(screen_helper)
         return screen
 
-    def after_login(self):
-        pass
+    def after_login(self, name, email, photo_uri):
+        self.root.ids.label.text = f"Logged in as {name}"
+        self.root.transtion.direction = "left"
+        self.root.get_screen('login').manager.current = 'menu'
+        # self.root.current = "menu"
+
 
     def error_listener(self):
-        pass
+        print("Login Failed!")
+
 
     def login(self):
         login_google()
+
+
+    def logout(self):
+        logout_google(self.after_logout())
+
+    def after_logout(self):
+        self.root.ids.label.text = ""
+        self.root.transtion.direction = "right"
+        # self.root.current = "login"
+
 
     # clearing login stuff once login so when you log out its not there
     def pressed_login(self):
@@ -623,28 +714,10 @@ class DemoApp(MDApp):
         for i in range(len(rows)):
             # for i in range(30):
             # creating the bandages
-            self.items = MDRoundFlatIconButton(text=str(i + 1), icon='bandage', size_hint=(1, 4))
-            self.items.bind(on_press=self.pressed)
-            self.root.get_screen('menu').ids.container1.add_widget(self.items)
-            # adding the labels inside the bandages
-            self.info_pH = MDLabel(text='Current pH level:' + pHlevel[i], halign='center', size_hint_y=1.65,
-                                   font_size=45, theme_text_color='Custom', text_color=(0, 0, 1, 1))
-            self.info_location = MDLabel(text='Bandage Location:' + location[i], halign='center', font_size=25,
-                                         size_hint_y=1.48)
-            self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info_pH)
-            self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info_location)
-
+            button = MDRoundFlatIconButton(text=str(i + 1), icon='bandage', size_hint=(1, 4), id=str(i),
+                                           on_press=partial(load_bandage_info, i, self.root.get_screen('mainbandage')))
+            self.root.get_screen('menu').ids.container1.add_widget(button)
             self.root.get_screen('mainbandage').generate_bar_graph()
-            if wound[i] == 'Your wound is healing!':
-                self.info = MDLabel(text=wound[i], halign='center', font_size=30, size_hint_y=.6,
-                                    theme_text_color='Custom', text_color=(0, 1, 0, 1))
-            else:
-                self.info = MDLabel(text=wound[i], halign='center', font_size=30, size_hint_y=.6,
-                                    theme_text_color='Custom', text_color=(1, 0, 0, 1))
-            self.root.get_screen('mainbandage').ids.trythis.add_widget(self.info)
-
-        # on_press = self.root.get_screen('menu').manager.current = 'mainbandage'
-
     # saving phonenumbers once entered by user
     def get_data(self):
 
@@ -728,18 +801,33 @@ class DemoApp(MDApp):
         except Exception as e:
             print("Error:", e)
 
-    def auth_email(self, email5, password5):
-        config = {'apiKey': "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
+    def auth_email(self, email, password):
+        """config = {'apiKey': "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
                   'authDomain': "healm-2-login.firebaseapp.com",
                   'projectId': "healm-2-login",
                   'storageBucket': "healm-2-login.appspot.com",
                   'messagingSenderId': "276399253320",
                   'appId': "1:276399253320:web:76b70d687e772cf73ab57d",
-                  'measurementId': "G-D06175F6BW"}
+                  'measurementId': "G-D06175F6BW"}"""
 
+        firebase = pyrebase.initialize_app(DemoApp.pyrebaseconfig)
 
-        auth_obj = auth
-        cred = credentials.Certificate(r"C:\Users\Dana\Desktop\androidapp\healm-2-login-firebase-adminsdk-y8yju-243fa8f58d.json")
+        auth2 = firebase.auth()
+
+        DemoApp.userEmail = email  # input("Please Enter Your Email Address : \n")
+        # password = password5  # getpass("Please Enter Your Password : \n")
+
+        # create users
+        user = auth2.create_user_with_email_and_password(email, password)
+        print("Success .... ")
+
+        # login = auth2.sign_in_with_email_and_password(email, password)
+
+        # send email verification
+        auth2.send_email_verification(user['idToken'])
+
+        """auth_obj = auth
+        cred = credentials.Certificate(r"json_file.json")
         firebase_admin.initialize_app(cred)
         # app = initialize_app(cred)
         # app = firebase.initialize_app(config)
@@ -751,21 +839,14 @@ class DemoApp(MDApp):
         Email = email5
         Password = password5
 
+        authenticate = firebase.auth()
+        auth.send_email_verification(login['idToken'])
+
         user = auth.create_user(
             email = Email,
             password = Password
-        )
+        )"""
 
-    def google_signin(self):
-        auth_obj = auth
-
-        cred = credentials.Certificate(r"C:\Users\Dana\Desktop\androidapp\healm-2-login-firebase-adminsdk-y8yju-243fa8f58d.json")
-        firebase_admin.initialize_app(cred)
-        google_provider = auth.GoogleAuthProvider()
-        user1 = auth.sign_in_with_popup(google_provider)
-
-        # auth.create_user_with_email_and_password(email, password)
-        # user = auth.sign_in_with_email_and_password(email, password)
 
     # def email_database(self, email, password):
     #     # Initialize Firebase
@@ -775,6 +856,7 @@ class DemoApp(MDApp):
     #     data = {
     #         'Email': email,
     #         'Password': password
+
     #     }
     #
     #     # Post Data
@@ -799,6 +881,25 @@ class DemoApp(MDApp):
             response.raise_for_status()
             login_data = response.json()
             print("Successfully logged in with UID:", login_data['localId'])
+            firebase = pyrebase.initialize_app(DemoApp.pyrebaseconfig)
+
+            auth2 = firebase.auth()
+
+            DemoApp.userEmail = email
+
+            # create users
+
+            user = auth2.sign_in_with_email_and_password(email, password)
+            user_info = auth2.get_account_info(user['idToken'])
+            print(user_info)
+            print(user_info['users'][0])
+            if not user_info['users'][0]['emailVerified']:
+                print("not verified")
+                return False
+
+            # send email verification
+            print("All good!")
+            auth2.send_password_reset_email(email)
             return True
             # login = auth.sign_in_with_email_and_password(email, password)
             # login = 'correct'
@@ -828,6 +929,100 @@ class DemoApp(MDApp):
         else:
             # Handle incorrect login here
             print("Invalid credentials")
+
+    # def verify_login(self, email, password):
+    #     # self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
+    #
+    #     # Get data
+    #     # self.result = self.firebase.get('healm-login-default-rtdb/Users', '')
+    #     api_key = "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4"
+    #     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
+    #     data = {
+    #         "email": email,
+    #         "password": password,
+    #         "returnSecureToken": True
+    #     }
+    #
+    #     # auth_obj = auth
+    #     # cred = credentials.Certificate(
+    #     #     r"C:\Users\Dana\Desktop\androidapp\healm-2-login-firebase-adminsdk-y8yju-243fa8f58d.json")
+    #     # firebase_admin.initialize_app(cred)
+    #
+    #     try:
+    #         response = requests.post(url, json=data)
+    #         response.raise_for_status()
+    #         login_data = response.json()
+    #         # user = auth.get_user('user_uid')
+    #         # print("Trying: ",user.toJSON())
+    #         # print("Logged in with email:", login_data['email'])
+    #         print("Successfully logged in with UID:", login_data['localId'])
+    #         return True
+    #         # login = auth.sign_in_with_email_and_password(email, password)
+    #         # login = 'correct'
+    #         # return True
+    #     except requests.exceptions.RequestException as e:
+    #         print("Login failed with error:", str(e))
+    #         return False
+    #
+
+    def delete_account(self):
+
+        # self.root.get_screen('login').ids.email1.text = ''
+        # self.root.get_screen('login').ids.password1.text = ''
+
+        email = self.root.get_screen('login').ids.email1.text
+        password = self.root.get_screen('login').ids.password1.text
+
+        api_key = "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4"
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
+        data = {
+            "email": email,
+            "password": password,
+            "returnSecureToken": True
+        }
+
+        response = requests.post(url, json = data)
+        response_data = response.json()
+        user_uid = response_data["localId"]
+
+        # if "localId" in response_data:
+        #     user_uid = response_data["localId"]
+        #     return user_uid
+        # else:
+        #     error_message = response_data.get("error", {}).get("message", "Unknown error")
+        #     return None
+
+        email =self.root.get_screen('login').ids.email1.text
+        password = self.root.get_screen('login').ids.password1.text
+
+        # firebase.delete(login_data['localId'], None)
+
+        try:
+            cred = credentials.Certificate(
+                r"C:\Users\Dana\Desktop\androidapp\healm-2-login-firebase-adminsdk-y8yju-243fa8f58d.json")
+            firebase_admin.initialize_app(cred)
+
+            # user = auth.get_user_by_email(email)
+            # claims = auth.verify_id_token(password)
+            auth.delete_user(user_uid)
+
+        except ValueError as e:
+            print(f"Error deleting user: {e}")
+
+        except Exception as e:
+            print(f"Other error occurred: {e}")
+
+
+
+        # Get Specific column like email or password
+        # Verify email and password
+        # for i in self.result.keys():
+        #     if self.result[i]['Email'] == email:
+        #         if self.result[i]['Password'] == password:
+        #             return True
+        #             print(email + "logged in!")
+        #     else:
+        #         return False
 
 
 DemoApp().run()
