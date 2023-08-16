@@ -6,7 +6,9 @@ import auth as googleauth
 import requests
 import pyrebase
 # import firebase
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+import matplotlib.dates as mdates
+
 from kivyauth.google_auth import initialize_google, login_google, logout_google
 import firebase_admin
 from firebase_admin import credentials, initialize_app, auth, db
@@ -540,26 +542,7 @@ class CloudScreen(Screen):
         asyncio.create_task(discover_devices())
 
     def connect_device(self, connect_to):
-        """async def connect():
-            async with bleak.BleakClient(connect_to) as client:
-                svcs = await client.get_services()
-                print("Services: ")
-                for service in svcs:
-                    print(service)
-                self.connected_device = connect_to
-                # await asyncio.sleep(1)
-                # Perform your communication with the device here
 
-        #loop = asyncio.get_event_loop()
-        #loop.run_until_complete(connect())
-        asyncio.run(connect())"""
-        """exists = False
-        for bandage in DemoApp.bandages:
-            if connect_to == bandage:
-                exists = True
-                DemoApp.bandages.remove(bandage)
-        if exists:"""
-        #DemoApp.bandages.append(connect_to.address)
         DemoApp.bandages[connect_to.address] = -1
         DemoApp.bandages_prev_data[connect_to.address] = [0,0,0,0,0,0,0]
         bandage_ref = db.reference(f"users/{DemoApp.uid}/bandages/{connect_to.address}")
@@ -571,14 +554,6 @@ class CloudScreen(Screen):
         async def connect():
             try:
                 async with bleak.BleakClient(connect_to) as client:
-                    """svcs = await client.get_services()
-                    for service in svcs:
-                        print(service)
-                        for characteristic in svcs.characteristics.items():
-                            print(characteristic[1].uuid)
-                            print(characteristic[1].description)
-                            print(characteristic[1].properties)
-                        print("")"""
                     bluetooth_value = str(await client.read_gatt_char(uuid_uart_service), "utf-8")
                     bandage_ref.set({"name": connect_to.name,
                                      "pH": bluetooth_value,
@@ -594,8 +569,7 @@ class CloudScreen(Screen):
                 print(f"Exception: {e}")
                 return None
 
-        #loop = asyncio.get_event_loop()
-        #loop.run_until_complete(connect())
+
         asyncio.create_task(connect())
 
     def show_connected_popup(self, device_address):
@@ -606,8 +580,6 @@ class CloudScreen(Screen):
 
 class BandageInfo(Screen):
 
-    # self.root.get_screen('login').ids.email1.text = ''
-    # self.root.get_screen('login').ids.password1.text = ''
     def get_email(self):
         email = self.root.get_screen('login').ids.email1.text
         return email
@@ -626,42 +598,54 @@ class PhoneNumScreen2(Screen):
 
 
 class MainBandageScreen(Screen):
+
     def generate_bar_graph(self):
+
+        # get current time
+        # now = datetime.datetime.now()
+        # current_time = now.strftime("%H: %M")
+
         screen = DemoApp.screen_manager.get_screen('mainbandage')
+
+        y = list(map(float, DemoApp.bandages_prev_data[DemoApp.cur_bandage]))
+        desired_num_ticks = 6
+        # num_ticks = min(len(y), 6) # Set a maximum of 6 ticks for readability
+        interval = max(1, len(y) // desired_num_ticks)
+
+        now = datetime.datetime.now()
+        times = [now - datetime.timedelta(minutes=i * interval) for i in range(len(y))]
+
+        # getting the dates from the past 7 days
         today = date.today()
         date2 = (today + datetime.timedelta(days=1))
-
         date1 = (today + datetime.timedelta(days=-6))
-
-        # date1 = datetime.datetime(element1, element2, element3)
         delta = datetime.timedelta(hours=24)
         dates = drange(date1, date2, delta)
+        dates = [date1 + i * delta for i in range(len(y))]
 
-        #x = ["7/09/23", "7/10/23", "7/11/23", "7/12/23", "7/13/23", "7/14/23", "7/15/23"]
-        #y = [0, 5, 10, 15, 20, 25, 30]
-        #if DemoApp.cur_bandage != None:
-        y = list(map(float, DemoApp.bandages_prev_data[DemoApp.cur_bandage]))#[0, 5, 10, 15, 20, 25, 30]
+        # plt.ion()
 
         # y = np.arange(len(dates))
 
         fig, ax = plt.subplots()
-        ax.plot_date(dates, y)
-        plt.xticks(rotation=8)
-        date_form = DateFormatter("%m-%d")
-        ax.xaxis.set_major_formatter(date_form)
+        line = ax.plot_date(times, y, 'b-')
 
-        # fig, ax = plt.subplots()
-        #plt.plot_date(x,y,xdate=True)
-        # ax.plot(dates, y)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%I:%M %p'))  # Format as month-day hour:minute
+        # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1)) # Show every day
+    
+        ax.xaxis.set_major_locator(mdates.HourLocator(interval=interval))
+        plt.xticks(rotation=8)
+        # date_form = DateFormatter("%m-%d")
+        # ax.xaxis.set_major_formatter(date_form)
 
         plot_widget = FigureCanvasKivyAgg(fig, size_hint_y=0.8)
 
         screen.ids.graph_container.clear_widgets()
         screen.ids.graph_container.add_widget(plot_widget)
         graph_container = screen.ids.graph_container
-        #graph_container.size_hint_y = None  # Disable height size_hint
+        # graph_container.size_hint_y = None # Disable height size_hint
 
-        #graph_container.height = "150dp"  # Set a fixed height (you can adjust the value as needed)
+        # graph_container.height = "150dp" # Set a fixed height
         graph_container.pos_hint = {"center_x": 0.5, "center_y": 0.5}  # Center the container
 
 
@@ -703,17 +687,6 @@ def load_bandage_info(bandage, screen, btn):
     screen.manager.current = 'mainbandage'
 
 
-
-# def call_num(num, self):
-#     intent = autoclass('android.net.Uri')
-#     uri = autoclass('android.net.Uri')
-#     pythonactivity = autoclass('org.renpy.android.PythonActivity')
-#     intent = intent(intent.ACTION_CALL)
-#     intent.setData(uri.parse("tel:" + num))
-#     currentactivity = cast('android.app.Activity', pythonactivity.mActivity)
-#     currentactivity.startActivity(intent)
-
-
 class DemoApp(MDApp):
     pyrebaseconfig = {
         "apiKey": "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
@@ -738,8 +711,6 @@ class DemoApp(MDApp):
     screen_manager = None
 
     def build(self):
-        # self.theme_cls.primary_palette = 'LightBlue'
-        # self.theme_cls.accent_palette = 'Blue'
         # trying to add the google log in stuff
         client_id = open("client_id.txt")
         client_secret = open("client_secret.txt")
@@ -748,7 +719,6 @@ class DemoApp(MDApp):
         screen = Builder.load_string(screen_helper)
         DemoApp.screen_manager = screen
 
-        #Clock.schedule_interval(self.read_data_loop_sync, 10)
         return screen
 
     async def connect(self):
@@ -757,14 +727,6 @@ class DemoApp(MDApp):
             print(bandage)
             try:
                 async with bleak.BleakClient(bandage) as client:
-                    """svcs = await client.get_services()
-                    for service in svcs:
-                        print(service)
-                        for characteristic in svcs.characteristics.items():
-                            print(characteristic[1].uuid)
-                            print(characteristic[1].description)
-                            print(characteristic[1].properties)
-                        print("")"""
                     bluetooth_value = str(await client.read_gatt_char(uuid_uart_service), "utf-8")
                     DemoApp.bandages[bandage] = bluetooth_value
                     i = 0
@@ -855,7 +817,6 @@ class DemoApp(MDApp):
         elif (self.root.get_screen('phonenumbers2').ids.number.text == ''):
             print("hola")
         else:
-            # self.root.get_screen('phonenumbers1').ids.numbers.add_widget(MDRectangleFlatButton(text=self.root.get_screen('phonenumbers2').ids.name.text + '\n'+self.root.get_screen('phonenumbers2').ids.number.text,size_hint=(1,0.05)))
             phone_ref.push().set({
                 'name': self.root.get_screen('phonenumbers2').ids.name.text,
                 'number': self.root.get_screen('phonenumbers2').ids.number.text
@@ -863,9 +824,6 @@ class DemoApp(MDApp):
             self.root.get_screen('phonenumbers2').ids.number.text = ''
             self.root.get_screen('phonenumbers2').ids.name.text = ''
             self.go_to_phonenums()
-            # self.root.get_screen('phonenumbers2').manager.current = 'phonenumbers1'
-        # print(self.root.get_screen('phonenumbers2').ids.data2.text) # address of textfield in kivy
-        #     self.go_to_phonenums()
 
     def go_to_phonenums(self):
         phone_ref = db.reference(f"users/{DemoApp.uid}/phoneNums")
@@ -920,16 +878,6 @@ class DemoApp(MDApp):
             print("Error:", e)
 
     def auth_email(self, email, password):
-        """config = {'apiKey': "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4",
-                  'authDomain': "healm-2-login.firebaseapp.com",
-                  'projectId': "healm-2-login",
-                  'storageBucket': "healm-2-login.appspot.com",
-                  'messagingSenderId': "276399253320",
-                  'appId': "1:276399253320:web:76b70d687e772cf73ab57d",
-                  'measurementId': "G-D06175F6BW"}"""
-
-        #DemoApp.userEmail = email  # input("Please Enter Your Email Address : \n")
-        # password = password5  # getpass("Please Enter Your Password : \n")
 
         # create users
         try:
@@ -962,21 +910,6 @@ class DemoApp(MDApp):
         cred = credentials.Certificate(
             r"json_file.json")
         firebase_admin.initialize_app(cred)
-
-    # def email_database(self, email, password):
-    #     # Initialize Firebase
-    #     self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
-    #
-    #     # Importing Data
-    #     data = {
-    #         'Email': email,
-    #         'Password': password
-
-    #     }
-    #
-    #     # Post Data
-    #     # Database Name/Table Name
-    #     self.firebase.post('healm-login-default-rtdb/Users', data)
 
     def verify_login(self, email, password):
         # self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
@@ -1039,20 +972,7 @@ class DemoApp(MDApp):
             DemoApp.screen_manager.get_screen('login').ids.errorLabel.text = "Incorrect email or password. Try again."
             return False
 
-        # if login == 'correct':
-        #     return True
-        # else:
-        #     return False
 
-        # Get Specific column like email or password
-        # Verify email and password
-        # for i in self.result.keys():
-        #     if self.result[i]['Email'] == email:
-        #         if self.result[i]['Password'] == password:
-        #             return True
-        #             print(email + "logged in!")
-        #     else:
-        #         return False
     def set_bandage_buttons(self):
         bandage_ref = db.reference(f"users/{DemoApp.uid}/bandages")
         """bandage_ref.push().set({
@@ -1086,45 +1006,7 @@ class DemoApp(MDApp):
             # Handle incorrect login here
             print("Invalid credentials")
 
-    # def verify_login(self, email, password):
-    #     # self.firebase = firebase.FirebaseApplication('https://healm-login-default-rtdb.firebaseio.com/', None)
-    #
-    #     # Get data
-    #     # self.result = self.firebase.get('healm-login-default-rtdb/Users', '')
-    #     api_key = "AIzaSyAnyPC3n3JHYiTDhmfv-K8MKXA51lR1pZ4"
-    #     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
-    #     data = {
-    #         "email": email,
-    #         "password": password,
-    #         "returnSecureToken": True
-    #     }
-    #
-    #     # auth_obj = auth
-    #     # cred = credentials.Certificate(
-    #     #     r"json_file.json")
-    #     # firebase_admin.initialize_app(cred)
-    #
-    #     try:
-    #         response = requests.post(url, json=data)
-    #         response.raise_for_status()
-    #         login_data = response.json()
-    #         # user = auth.get_user('user_uid')
-    #         # print("Trying: ",user.toJSON())
-    #         # print("Logged in with email:", login_data['email'])
-    #         print("Successfully logged in with UID:", login_data['localId'])
-    #         return True
-    #         # login = auth.sign_in_with_email_and_password(email, password)
-    #         # login = 'correct'
-    #         # return True
-    #     except requests.exceptions.RequestException as e:
-    #         print("Login failed with error:", str(e))
-    #         return False
-    #
-
     def delete_account(self):
-
-        # self.root.get_screen('login').ids.email1.text = ''
-        # self.root.get_screen('login').ids.password1.text = ''
 
         email = self.root.get_screen('login').ids.email1.text
         password = self.root.get_screen('login').ids.password1.text
@@ -1140,14 +1022,7 @@ class DemoApp(MDApp):
         response = requests.post(url, json=data)
         response_data = response.json()
         print(response_data)
-        #user_uid = response_data["localId"]
 
-        # if "localId" in response_data:
-        #     user_uid = response_data["localId"]
-        #     return user_uid
-        # else:
-        #     error_message = response_data.get("error", {}).get("message", "Unknown error")
-        #     return None
 
         email = self.root.get_screen('login').ids.email1.text
         password = self.root.get_screen('login').ids.password1.text
